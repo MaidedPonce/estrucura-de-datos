@@ -16,7 +16,7 @@ type User struct {
 }
 
 type Traveler struct {
-	userId  string
+	userId  User
 	origin  string
 	destiny string
 }
@@ -26,46 +26,13 @@ type ListaSolicitudes struct {
 	users       map[string]User
 }
 
-func (ls *ListaSolicitudes) AddNewTraveler(origin string, destiny string) {
-	id := uuid.New().String()
-	newTraveler := Traveler{userId: id, origin: origin, destiny: destiny}
+type ArbolUsuarios struct {
+	raiz *Nodo
+}
+
+func (ls *ListaSolicitudes) AddNewTravel(user User, origin string, destiny string) {
+	newTraveler := Traveler{userId: user, origin: origin, destiny: destiny}
 	ls.solicitudes = append(ls.solicitudes, newTraveler)
-}
-
-func (ls *ListaSolicitudes) fusionaSolicitudes(lista2 ListaSolicitudes) ListaSolicitudes {
-	result := ListaSolicitudes{}
-	len1 := len(ls.solicitudes)
-	len2 := len(lista2.solicitudes)
-	if len1 >= len2 {
-		for i := 0; i < len1; i++ {
-			if i < len2 {
-				result.solicitudes = append(result.solicitudes, ls.solicitudes[i], lista2.solicitudes[i])
-			} else {
-				result.solicitudes = append(result.solicitudes, ls.solicitudes[i])
-			}
-		}
-	} else {
-		for i := 0; i < len2; i++ {
-			if i < len1 {
-				result.solicitudes = append(result.solicitudes, ls.solicitudes[i], lista2.solicitudes[i])
-			} else {
-				result.solicitudes = append(result.solicitudes, lista2.solicitudes[i])
-			}
-		}
-	}
-	return result
-}
-
-func (ls *ListaSolicitudes) compartir(lista2 ListaSolicitudes) ListaSolicitudes {
-	result := ListaSolicitudes{}
-	for _, t1 := range ls.solicitudes {
-		for _, t2 := range lista2.solicitudes {
-			if t1.origin == t2.origin && t1.destiny == t2.destiny {
-				result.solicitudes = append(result.solicitudes, t1, t2)
-			}
-		}
-	}
-	return result
 }
 
 func (ls *ListaSolicitudes) Ordena(orden int) ListaSolicitudes {
@@ -87,7 +54,7 @@ func (ls *ListaSolicitudes) Ordena(orden int) ListaSolicitudes {
 		for _, uid := range userIds {
 			t := Traveler{}
 			for _, st := range ls.solicitudes {
-				if st.userId == uid {
+				if st.userId.id == uid {
 					t = st
 					break
 				}
@@ -102,10 +69,7 @@ type Nodo struct {
 	usuario *User
 	izq     *Nodo
 	der     *Nodo
-}
-
-type ArbolUsuarios struct {
-	raiz *Nodo
+	nivel   int
 }
 
 func (a *ArbolUsuarios) insertaUsuario(u *User) {
@@ -123,12 +87,14 @@ func (a *ArbolUsuarios) insertaUsuario(u *User) {
 		if u.id < nodoActual.usuario.id {
 			if nodoActual.izq == nil {
 				nodoActual.izq = nuevoNodo
+				fmt.Println("Usuario insertado:", u)
 				return
 			}
 			nodoActual = nodoActual.izq
 		} else {
 			if nodoActual.der == nil {
 				nodoActual.der = nuevoNodo
+				fmt.Println("Usuario insertado:", "\n", u)
 				return
 			}
 			nodoActual = nodoActual.der
@@ -138,6 +104,7 @@ func (a *ArbolUsuarios) insertaUsuario(u *User) {
 
 func (a *ArbolUsuarios) remueveUsuario(id string) {
 	a.raiz = remueveNodo(a.raiz, id)
+	fmt.Print("El usuario ", id, "fue eliminado", "\n")
 }
 
 func remueveNodo(nodo *Nodo, id string) *Nodo {
@@ -182,13 +149,17 @@ func (tree *ArbolUsuarios) encuentraUsuario(nombre string) (*User, error) {
 		return nil, fmt.Errorf("El árbol está vacío")
 	}
 
+	fmt.Println("Buscando usuario: ", "\n", nombre)
 	current := tree.raiz
 	for current != nil {
 		if current.usuario.nombre == nombre {
+			fmt.Println("Usuario encontrado: ", "\n", current.usuario)
 			return current.usuario, nil
 		} else if current.usuario.nombre > nombre {
+			fmt.Println(current.izq)
 			current = current.izq
 		} else {
+			fmt.Println(current.der)
 			current = current.der
 		}
 	}
@@ -211,7 +182,7 @@ func (nodo *Nodo) muestra() {
 	}
 
 	nodo.izq.muestra()
-	fmt.Println(nodo.usuario)
+	fmt.Println("Usuario muestra:", "\n", nodo.usuario)
 	nodo.der.muestra()
 }
 
@@ -220,19 +191,19 @@ func (tree *ArbolUsuarios) muestraNivel() {
 		fmt.Println("El árbol está vacío")
 		return
 	}
-	cola := []*Nodo{tree.raiz}
+	cola := []*Nodo{{usuario: tree.raiz.usuario, nivel: 0}}
 
 	for len(cola) > 0 {
 		current := cola[0]
 		cola = cola[1:]
 
-		fmt.Println(current.usuario)
+		fmt.Printf("Nivel %d: %v\n", current.nivel, current.usuario)
 
 		if current.izq != nil {
-			cola = append(cola, current.izq)
+			cola = append(cola, &Nodo{usuario: current.izq.usuario, nivel: current.nivel + 1})
 		}
 		if current.der != nil {
-			cola = append(cola, current.der)
+			cola = append(cola, &Nodo{usuario: current.der.usuario, nivel: current.nivel + 1})
 		}
 	}
 }
@@ -242,6 +213,7 @@ func (tree *ArbolUsuarios) quejas(nombre string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("El número de quejas del usuario", user.nombre, "es: ", "\n", user.numerodequejas)
 	user.numerodequejas++
 	if user.numerodequejas == 5 {
 		tree.raiz = remueveNodo(tree.raiz, nombre)
@@ -257,35 +229,44 @@ func (tree *ArbolUsuarios) usuariosCriticos() ([]string, []string, error) {
 	minQuejas := tree.raiz.usuario.numerodequejas
 	maxUsuarios := []string{tree.raiz.usuario.nombre}
 	minUsuarios := []string{tree.raiz.usuario.nombre}
-	updateLists := func(user *User, usuarios *[]string, quejas int) {
-		if user.numerodequejas == quejas {
-			*usuarios = append(*usuarios, user.nombre)
-		} else if user.numerodequejas > quejas {
-			*usuarios = []string{user.nombre}
-		}
-	}
 	var traverse func(nodo *Nodo)
 	traverse = func(nodo *Nodo) {
 		if nodo == nil {
 			return
 		}
 
-		updateLists(nodo.usuario, &maxUsuarios, maxQuejas)
-		updateLists(nodo.usuario, &minUsuarios, minQuejas)
-
 		if nodo.usuario.numerodequejas > maxQuejas {
 			maxQuejas = nodo.usuario.numerodequejas
-		} else if nodo.usuario.numerodequejas < minQuejas {
+			maxUsuarios = []string{nodo.usuario.nombre}
+		} else if nodo.usuario.numerodequejas == maxQuejas && !contains(maxUsuarios, nodo.usuario.nombre) {
+			maxUsuarios = append(maxUsuarios, nodo.usuario.nombre)
+		}
+
+		if nodo.usuario.numerodequejas < minQuejas {
 			minQuejas = nodo.usuario.numerodequejas
+			minUsuarios = []string{nodo.usuario.nombre}
+		} else if nodo.usuario.numerodequejas == minQuejas && !contains(minUsuarios, nodo.usuario.nombre) {
+			minUsuarios = append(minUsuarios, nodo.usuario.nombre)
 		}
 
 		traverse(nodo.izq)
 		traverse(nodo.der)
 	}
-
 	traverse(tree.raiz)
 
+	fmt.Printf("Usuarios con más quejas (%d): %v\n", maxQuejas, maxUsuarios)
+	fmt.Printf("Usuarios con menos quejas (%d): %v\n", minQuejas, minUsuarios)
+
 	return maxUsuarios, minUsuarios, nil
+}
+
+func contains(slice []string, val string) bool {
+	for _, v := range slice {
+		if v == val {
+			return true
+		}
+	}
+	return false
 }
 
 func imprimirArbol(nodo *Nodo) {
@@ -298,39 +279,64 @@ func imprimirArbol(nodo *Nodo) {
 }
 
 func main() {
-	ls := ListaSolicitudes{}
-	ls.AddNewTraveler("Bogotá", "Medellín")
-	ls.AddNewTraveler("Bogotá", "Cali")
-	fmt.Println("Lista de solicitudes:", ls.solicitudes)
+	ls := &ArbolUsuarios{}
+	user1 := User{
+		id:             uuid.New().String(),
+		nombre:         "Maided",
+		edad:           20,
+		sexo:           "Mujer",
+		numerodequejas: 20,
+	}
+	user2 := User{
+		id:             uuid.New().String(),
+		nombre:         "Guadalupe",
+		edad:           20,
+		sexo:           "Mujer",
+		numerodequejas: 3,
+	}
+	user3 := User{
+		id:             uuid.New().String(),
+		nombre:         "Lupita",
+		edad:           20,
+		sexo:           "Mujer",
+		numerodequejas: 8,
+	}
+	ls.insertaUsuario(&user1)
+	fmt.Printf("\n")
+	ls.insertaUsuario(&user2)
+	fmt.Printf("\n")
+	ls.encuentraUsuario(user1.nombre)
+	fmt.Printf("\n")
+	ls.remueveUsuario(user3.id)
+	fmt.Printf("\n")
+	ls.muestra()
+	fmt.Printf("\n")
+	fmt.Println("Niveles de usuarios:")
+	ls.muestraNivel()
+	fmt.Printf("\n")
+	ls.quejas(user1.nombre)
+	fmt.Printf("\n")
+	ls.usuariosCriticos()
+
+	// Ordena
 
 	ls2 := ListaSolicitudes{}
-	ls2.AddNewTraveler("Bogotá", "Cali")
-	ls2.AddNewTraveler("Medellín", "Cartagena")
-	fmt.Println("Segunda lista de solicitudes:", ls2.solicitudes)
+	newTravel1 := Traveler{
+		userId:  user1,
+		origin:  "Medellín",
+		destiny: "Cartagena",
+	}
+	newTravel12 := Traveler{
+		userId:  user2,
+		origin:  "Medellín",
+		destiny: "Cartagena",
+	}
+	ls2.AddNewTravel(newTravel1.userId, newTravel1.origin, newTravel1.destiny)
+	ls2.AddNewTravel(newTravel12.userId, newTravel12.origin, newTravel12.destiny)
+	fmt.Printf("\n")
+	fmt.Println("Segunda lista de solicitudes:", "\n", ls2.solicitudes)
+	fmt.Printf("\n")
+	ls2.Ordena(1)
+	fmt.Println("Ordena:", ls2.solicitudes)
 
-	ls3 := ls.fusionaSolicitudes(ls2)
-	fmt.Println("Lista fusionada de solicitudes:", ls3.solicitudes)
-
-	ls4 := ls.compartir(ls2)
-	fmt.Println("Solicitudes compartidas:", ls4.solicitudes)
-
-	ls5 := ls.Ordena(1)
-	fmt.Println("Solicitudes ordenadas por origen:", ls5.solicitudes)
-
-	tree := ArbolUsuarios{}
-	user1 := User{id: "1", nombre: "Juan", edad: 25, sexo: "M", numerodequejas: 0}
-	user2 := User{id: "2", nombre: "Ana", edad: 30, sexo: "F", numerodequejas: 1}
-	user3 := User{id: "3", nombre: "Pedro", edad: 20, sexo: "M", numerodequejas: 2}
-
-	tree.insertaUsuario(&user1)
-	tree.insertaUsuario(&user2)
-	tree.insertaUsuario(&user3)
-
-	fmt.Println("Usuarios del árbol:")
-	imprimirArbol(tree.raiz)
-
-	tree.remueveUsuario("2")
-
-	fmt.Println("Usuarios del árbol después de remover el usuario con id=2:")
-	imprimirArbol(tree.raiz)
 }
