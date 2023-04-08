@@ -368,7 +368,6 @@ func main() {
 	ls.contagio("Maided")
 	ls.contagio("Maided")
 	ls.contagio("Maided")
-	// fmt.Println(contagiados)
 
 	// Usuarios vulnerables
 	fmt.Println("Usuarios vulnerables:")
@@ -376,7 +375,6 @@ func main() {
 	fmt.Println(vulnerables)
 
 	// Ordena
-
 	ls2 := ListaSolicitudes{}
 	newTravel1 := Traveler{
 		userId:  user1,
@@ -397,23 +395,3 @@ func main() {
 	fmt.Println("Ordena:", ls2.solicitudes)
 
 }
-
-/*
-
-arbolUsuarios := &ArbolUsuarios{}
-
-// Insertar usuario
-user1 := &User{id: "1", nombre: "Juan", edad: 25, sexo: "M", numerodequejas: 0, numContagios: 0}
-arbolUsuarios.insertaUsuario(user1)
-
-// Incrementar el número de contagios de Juan en 3
-arbolUsuarios.contagio("Juan")
-arbolUsuarios.contagio("Juan")
-arbolUsuarios.contagio("Juan")
-
-// Incrementar el número de contagios de Juan en 2, debe ser notificado
-arbolUsuarios.contagio("Juan")
-arbolUsuarios.contagio("Juan")
-
-
-*/
